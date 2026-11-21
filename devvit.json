@@ -6,7 +6,7 @@
     "entrypoints": {
       "default": {
         "entry": "splash.html",
-        "height": "tall"
+        "height": "regular"
       }
     }
   },
@@ -20,7 +20,8 @@
       "domains": ["fortnite-api.com"]
     },
     "reddit": {
-      "enable": true
+      "enable": true,
+      "scope": "moderator"
     },
     "redis": true
   },
@@ -36,7 +37,7 @@
     "items": [
       {
         "label": "Create Spice Shop Tracker",
-        "description": "Create the live Spice the Pumpkin Cat tracker post",
+        "description": "Create or pin the tracker and set up the live Spice status sidebar widget",
         "location": "subreddit",
         "forUserType": "moderator",
         "endpoint": "/internal/menu/create-tracker"

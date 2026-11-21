@@ -8,6 +8,8 @@ const SHOP_URL = 'https://fortnite-api.com/v2/shop?language=en';
 const STATUS_KEY = 'spice-watch:status:v1';
 const PREVIOUS_KEY = 'spice-watch:previous-in-stock:v1';
 const POST_KEY = 'spice-watch:tracker-post-id:v1';
+const SUBREDDIT_KEY = 'spice-watch:subreddit-name:v1';
+const SIDEBAR_WIDGET_NAME = 'Spice Stock';
 
 type ShopStatus = {
   inStock: boolean;
@@ -15,6 +17,14 @@ type ShopStatus = {
   price: number | null;
   shopDate: string | null;
   lastCheckedAt: string;
+};
+
+type WidgetRecord = { id: string; name?: string; shortName?: string };
+
+const widgetReddit = reddit as unknown as {
+  getWidgets: (subredditName: string) => Promise<WidgetRecord[]>;
+  addWidget: (data: Record<string, unknown>) => Promise<WidgetRecord>;
+  updateWidget: (data: Record<string, unknown>) => Promise<WidgetRecord>;
 };
 
 function findCosmetic(value: unknown): Record<string, unknown> | null {
@@ -33,6 +43,50 @@ function findCosmetic(value: unknown): Record<string, unknown> | null {
     if (found) return found;
   }
   return null;
+}
+
+function answerFor(status: ShopStatus | null): string {
+  if (!status) return '?';
+  return status.inStock ? 'YES' : 'NO';
+}
+
+function statusLine(status: ShopStatus | null): string {
+  return `**Is Spice Skin in stock?:** ${answerFor(status)}`;
+}
+
+async function syncSidebarWidget(subredditName: string, status: ShopStatus | null): Promise<void> {
+  const widgets = await widgetReddit.getWidgets(subredditName);
+  const existing = widgets.find(
+    (widget) => widget.name === SIDEBAR_WIDGET_NAME || widget.shortName === SIDEBAR_WIDGET_NAME,
+  );
+
+  const widgetData: Record<string, unknown> = {
+    type: 'textarea',
+    subreddit: subredditName,
+    shortName: SIDEBAR_WIDGET_NAME,
+    text: statusLine(status),
+    styles: {
+      backgroundColor: '#2b1b13',
+      headerColor: '#a85419',
+    },
+  };
+
+  if (existing?.id) {
+    await widgetReddit.updateWidget({ ...widgetData, id: existing.id });
+  } else {
+    await widgetReddit.addWidget(widgetData);
+  }
+}
+
+async function updateTrackerFallback(status: ShopStatus | null): Promise<void> {
+  const postId = await redis.get(POST_KEY);
+  if (!postId) return;
+  try {
+    const post = await reddit.getPostById(postId);
+    await post.setTextFallback({ text: statusLine(status) });
+  } catch (error) {
+    console.error('Could not update tracker fallback:', error);
+  }
 }
 
 async function fetchShopStatus(): Promise<ShopStatus> {
@@ -85,17 +139,45 @@ app.get('/api/status', async (c) => {
 app.post('/internal/menu/create-tracker', async (c) => {
   try {
     const subreddit = await reddit.getCurrentSubreddit();
-    const post = await reddit.submitCustomPost({
-      subredditName: subreddit.name,
-      title: '🎃 Spice the Pumpkin Cat — Live Item Shop Tracker',
-      entry: 'default',
-      textFallback: { text: 'This interactive Reddit post checks the Fortnite Item Shop for Spice (Character_MeowKnaw).' },
+    await redis.set(SUBREDDIT_KEY, subreddit.name);
+
+    const existingPostId = await redis.get(POST_KEY);
+    let post = existingPostId ? await reddit.getPostById(existingPostId) : null;
+
+    if (!post) {
+      post = await reddit.submitCustomPost({
+        subredditName: subreddit.name,
+        title: '🎃 Is Spice Skin in stock?',
+        entry: 'default',
+        textFallback: { text: statusLine(null) },
+      });
+      await redis.set(POST_KEY, post.id);
+    }
+
+    await post.sticky(1);
+
+    let sidebarReady = false;
+    try {
+      const cached = await redis.get(STATUS_KEY);
+      const status = cached ? JSON.parse(cached) as ShopStatus : null;
+      await syncSidebarWidget(subreddit.name, status);
+      await post.setTextFallback({ text: statusLine(status) });
+      sidebarReady = true;
+    } catch (error) {
+      console.error('Could not set up Spice sidebar widget:', error);
+    }
+
+    return c.json({
+      showToast: {
+        text: sidebarReady
+          ? 'Spice tracker pinned and sidebar widget added or updated.'
+          : 'Tracker pinned. Sidebar widget could not be set up; check app logs.',
+        appearance: sidebarReady ? 'success' : 'neutral',
+      },
     });
-    await redis.set(POST_KEY, post.id);
-    return c.json({ showToast: { text: 'Spice tracker post created. Open it and pin it for your community.', appearance: 'success' } });
   } catch (error) {
-    console.error('Could not create tracker post:', error);
-    return c.json({ showToast: { text: 'Could not create the tracker post. Check the app logs and try again.', appearance: 'neutral' } });
+    console.error('Could not create or pin tracker:', error);
+    return c.json({ showToast: { text: 'Could not create or pin the tracker. Check app logs and try again.', appearance: 'neutral' } });
   }
 });
 
@@ -103,6 +185,16 @@ app.post('/internal/scheduler/check-shop', async (c) => {
   try {
     const status = await fetchShopStatus();
     await saveStatus(status);
+
+    const subredditName = await redis.get(SUBREDDIT_KEY);
+    if (subredditName) {
+      try {
+        await syncSidebarWidget(subredditName, status);
+      } catch (error) {
+        console.error('Could not update Spice sidebar widget:', error);
+      }
+    }
+    await updateTrackerFallback(status);
 
     const previous = await redis.get(PREVIOUS_KEY);
     const justArrived = status.inStock && previous !== 'true';
@@ -144,6 +236,17 @@ app.post('/internal/scheduler/check-shop', async (c) => {
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown scheduled shop check error';
     console.error('Scheduled Spice shop check failed:', message);
+
+    const subredditName = await redis.get(SUBREDDIT_KEY);
+    if (subredditName) {
+      try {
+        await syncSidebarWidget(subredditName, null);
+        await updateTrackerFallback(null);
+      } catch (widgetError) {
+        console.error('Could not show unavailable Spice status:', widgetError);
+      }
+    }
+
     return c.json({ status: 'error', error: message }, 500);
   }
 });

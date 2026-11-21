@@ -1,51 +1,54 @@
 # Spice Shop Watch — Reddit Devvit app
 
-This project runs inside Reddit as an interactive custom post. GitHub stores the source code; Reddit hosts the app. It does not use GitHub Pages.
+This project runs natively in Reddit. GitHub stores the source code; Reddit hosts the interactive post and sidebar widget.
 
-## Features
+## What the community sees
 
-- Checks the free Fortnite-API endpoint https://fortnite-api.com/v2/shop?language=en.
-- Matches Spice by its exact cosmetic ID: Character_MeowKnaw.
-- Displays live shop status and V-Bucks price inside a Reddit post.
-- Reddit's server checks the shop every five minutes; the open post refreshes its display every minute.
-- When Spice enters the shop, the app attempts to send an inbox message to the configured Reddit username and adds a comment to the tracker post.
+- A small pinned post reading **Is Spice Skin in stock? YES/NO**.
+- When Spice is in stock, the YES badge pulses and sparkles in the interactive post for every viewer.
+- A native Reddit Text Area sidebar widget shows the same short YES/NO status.
+- The sidebar widget is text-only and cannot run the post's CSS animation; the animation plays in the pinned interactive post.
+- The app checks Fortnite's public shop feed every five minutes. The open post refreshes its displayed status every minute.
+- If the feed cannot be reached, the app shows `?` rather than falsely reporting NO.
 
-## Fetch Domains
+## Fortnite API and permissions
 
-This app requests the exact hostname `fortnite-api.com`. It is used only by the server to read the publicly accessible current Fortnite Item Shop JSON feed at `https://fortnite-api.com/v2/shop?language=en`, identify the Spice outfit by its cosmetic ID, and display whether it is present in the current rotation. The app does not send personal Reddit data to this service.
+The app reads the current Fortnite Item Shop JSON feed from:
 
-Reddit must approve this hostname for the app before requests can succeed. Check the status at https://developers.reddit.com/apps/spice-shop-watch/developer-settings. Domain approval is separate from successful code builds and playtests.
+`https://fortnite-api.com/v2/shop?language=en`
 
-## Important notes
+It matches Spice by exact cosmetic ID `Character_MeowKnaw`. The app does not send personal Reddit data to this service.
 
-- A Reddit sidebar cannot run an interactive JavaScript app. Pin/highlight the interactive tracker post, then optionally add a sidebar button linking to that Reddit post. Members stay on Reddit.
-- Devvit push notifications are not generally available to all apps. This version uses an opt-in Reddit inbox message.
-- In the app's subreddit installation settings, enter the Reddit username for Spice alerts (without u/). Leave it blank to disable direct messages.
-- Reddit must approve the app and its request to fortnite-api.com before production installation.
-- Always confirm the item in Fortnite before purchasing.
+Reddit must approve the hostname `fortnite-api.com` for this app. Check the status at https://developers.reddit.com/apps/spice-shop-watch/developer-settings. Domain approval is separate from successful code builds and playtests.
 
-## Run from this repository
+The app uses moderator-scope Reddit API access only to create or pin its tracker post and create/update its own sidebar text widget.
 
-This project is in PletzelOnYT/Reddit-App. Open https://github.com/PletzelOnYT/Reddit-App and create a Codespace on the main branch. In the Codespaces terminal run:
+## Notifications
 
+When the skin enters the shop, the app attempts to send an inbox message to the configured Reddit username and adds a comment to the tracker post. Set the username in the app's subreddit settings (without `u/`). Leave it blank to disable direct messages.
+
+## Test from Codespaces
+
+Open https://github.com/PletzelOnYT/Reddit-App and create or reopen a Codespace on `main`. In its terminal run:
+
+    git pull origin main
     npm install
-    npx devvit login
+    npm run build
+    npm run dev
 
-You must moderate the test subreddit. Test the app with:
+Open the test subreddit URL printed by Devvit and refresh the subreddit. In the subreddit moderator menu, click **Create Spice Shop Tracker**. The command reuses and pins the existing tracker post, then creates or updates one sidebar widget named **Spice Stock**.
 
-    npx devvit playtest YOUR_TEST_SUBREDDIT
+After setting up the sidebar widget, go to Mod Tools → Community Appearance → Sidebar and drag **Spice Stock** where you want it. The widget is created automatically; you only need to position it.
 
-When the playtest works, submit the app for Reddit review:
+## Publish after testing
+
+When the live API status is verified and the playtest looks correct:
 
     npm run deploy
     npx devvit publish
 
-Reddit must approve the app before it is live. After approval, install it in a subreddit you moderate:
-
-    npx devvit install YOUR_SUBREDDIT
-
-Set the Reddit username for Spice alerts in the installation settings. Open the subreddit moderator menu and choose Create Spice Shop Tracker. Pin/highlight the new interactive post. Optionally add a sidebar Button linking to that post's Reddit URL.
+Reddit must approve the app before it can be installed in a production community. After approval, update/install it in a subreddit you moderate.
 
 ## Updating later
 
-Edit the source in this repository, then run npm run deploy and npx devvit publish from a Codespace. Follow Reddit's approval/update process. GitHub stores the code; Reddit hosts the embedded experience.
+Pull the latest source, edit the files, and use the Devvit playtest/deploy/publish workflow. GitHub stores the code; Reddit hosts the experience.
