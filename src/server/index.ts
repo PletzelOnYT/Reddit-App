@@ -109,8 +109,9 @@ app.post('/internal/scheduler/check-shop', async (c) => {
 
     if (justArrived) {
       const usernameValue = await settings.get('alertUsername');
-      const username = typeof usernameValue === 'string' ? usernameValue.trim().replace(/^u\\//i, '') : '';
-      const message = '🎃 Spice is in the Fortnite Item Shop right now!\\n\\nThe Spice outfit (Character_MeowKnaw) was detected in the live shop feed. Confirm the offer in-game before purchasing.';
+      const rawUsername = typeof usernameValue === 'string' ? usernameValue.trim() : '';
+      const username = rawUsername.toLowerCase().startsWith('u/') ? rawUsername.slice(2) : rawUsername;
+      const message = '🎃 Spice is in the Fortnite Item Shop right now!\n\nThe Spice outfit (Character_MeowKnaw) was detected in the live shop feed. Confirm the offer in-game before purchasing.';
 
       if (username) {
         try {
