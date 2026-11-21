@@ -10,6 +10,12 @@ This project runs inside Reddit as an interactive custom post. GitHub stores the
 - Reddit's server checks the shop every five minutes; the open post refreshes its display every minute.
 - When Spice enters the shop, the app attempts to send an inbox message to the configured Reddit username and adds a comment to the tracker post.
 
+## Fetch Domains
+
+This app requests the exact hostname `fortnite-api.com`. It is used only by the server to read the publicly accessible current Fortnite Item Shop JSON feed at `https://fortnite-api.com/v2/shop?language=en`, identify the Spice outfit by its cosmetic ID, and display whether it is present in the current rotation. The app does not send personal Reddit data to this service.
+
+Reddit must approve this hostname for the app before requests can succeed. Check the status at https://developers.reddit.com/apps/spice-shop-watch/developer-settings. Domain approval is separate from successful code builds and playtests.
+
 ## Important notes
 
 - A Reddit sidebar cannot run an interactive JavaScript app. Pin/highlight the interactive tracker post, then optionally add a sidebar button linking to that Reddit post. Members stay on Reddit.
