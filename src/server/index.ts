@@ -78,11 +78,18 @@ async function syncSidebarWidget(subredditName: string, status: ShopStatus | nul
   }
 }
 
+function asPostId(id: string): `t3_${string}` {
+  if (!id.startsWith('t3_')) {
+    throw new Error('Stored Spice tracker post ID is not a Reddit post ID.');
+  }
+  return id as `t3_${string}`;
+}
+
 async function updateTrackerFallback(status: ShopStatus | null): Promise<void> {
   const postId = await redis.get(POST_KEY);
   if (!postId) return;
   try {
-    const post = await reddit.getPostById(postId);
+    const post = await reddit.getPostById(asPostId(postId));
     await post.setTextFallback({ text: statusLine(status) });
   } catch (error) {
     console.error('Could not update tracker fallback:', error);
@@ -142,7 +149,7 @@ app.post('/internal/menu/create-tracker', async (c) => {
     await redis.set(SUBREDDIT_KEY, subreddit.name);
 
     const existingPostId = await redis.get(POST_KEY);
-    let post = existingPostId ? await reddit.getPostById(existingPostId) : null;
+    let post = existingPostId ? await reddit.getPostById(asPostId(existingPostId)) : null;
 
     if (!post) {
       post = await reddit.submitCustomPost({
@@ -221,7 +228,7 @@ app.post('/internal/scheduler/check-shop', async (c) => {
       if (postId) {
         try {
           await reddit.submitComment({
-            id: postId,
+            id: asPostId(postId),
             text: '🎃 **Spice is in the Fortnite Item Shop!** The live shop feed detected the Spice outfit. Confirm the offer in-game before purchasing.',
             runAs: 'APP',
           });
