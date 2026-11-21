@@ -1,0 +1,60 @@
+{
+  "$schema": "https://developers.reddit.com/schema/config-file.v1.json",
+  "name": "spice-shop-watch",
+  "post": {
+    "dir": "dist/client",
+    "entrypoints": {
+      "default": {
+        "entry": "splash.html",
+        "height": "tall"
+      }
+    }
+  },
+  "server": {
+    "dir": "dist/server",
+    "entry": "index.cjs"
+  },
+  "permissions": {
+    "http": {
+      "enable": true,
+      "domains": ["fortnite-api.com"]
+    },
+    "reddit": {
+      "enable": true
+    },
+    "redis": true
+  },
+  "scheduler": {
+    "tasks": {
+      "check-spice-shop": {
+        "endpoint": "/internal/scheduler/check-shop",
+        "cron": "*/5 * * * *"
+      }
+    }
+  },
+  "menu": {
+    "items": [
+      {
+        "label": "Create Spice Shop Tracker",
+        "description": "Create the live Spice the Pumpkin Cat tracker post",
+        "location": "subreddit",
+        "forUserType": "moderator",
+        "endpoint": "/internal/menu/create-tracker"
+      }
+    ]
+  },
+  "settings": {
+    "subreddit": {
+      "alertUsername": {
+        "type": "string",
+        "label": "Reddit username for Spice alerts",
+        "defaultValue": "",
+        "helpText": "Enter your Reddit username without u/. The app sends an inbox message when Spice enters the shop. Leave blank to disable direct messages."
+      }
+    }
+  },
+  "scripts": {
+    "dev": "vite build --watch",
+    "build": "vite build"
+  }
+}
