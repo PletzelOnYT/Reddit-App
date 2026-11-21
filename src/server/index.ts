@@ -89,7 +89,7 @@ app.post('/internal/menu/create-tracker', async (c) => {
       subredditName: subreddit.name,
       title: '🎃 Spice the Pumpkin Cat — Live Item Shop Tracker',
       entry: 'default',
-      textFallback: 'This interactive Reddit post checks the Fortnite Item Shop for Spice (Character_MeowKnaw).',
+      textFallback: { text: 'This interactive Reddit post checks the Fortnite Item Shop for Spice (Character_MeowKnaw).' },
     });
     await redis.set(POST_KEY, post.id);
     return c.json({ showToast: { text: 'Spice tracker post created. Open it and pin it for your community.', appearance: 'success' } });
